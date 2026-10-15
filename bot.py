@@ -1,4 +1,5 @@
 # bot.py — valan discord bot
+# FREEFIRE = method หนึ่งใน L4 · VC_DISCORD = method ใน ALL_METHODS
 import asyncio, time, re, aiohttp, discord
 from discord.ext import commands
 import db
@@ -13,31 +14,36 @@ intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-# ---- method lists ----
+# ---- L7 methods ----
 L7_LIST = [
     "GET","POST","OVH","RHEX","STOMP","STRESS","DYN","DOWNLOADER","SLOW",
     "HEAD","NULL","COOKIE","PPS","EVEN","GSB","DGB","AVB","BOT","APACHE",
     "XMLRPC","CFB","CFBUAM","BYPASS","BOMB","KILLER","TOR",
 ]
+
+# ---- L4 methods — FREEFIRE รวมอยู่แล้ว ----
 L4_LIST = [
     "TCP","UDP","SYN","OVH-UDP","CPS","ICMP","CONNECTION",
     "VSE","TS3","FIVEM","FIVEM-TOKEN","MEM","NTP","MCBOT","MINECRAFT",
     "MCPE","DNS","CHAR","CLDAP","ARD","RDP",
+    "FREEFIRE",   # ← รวมใน L4
 ]
 
+# ---- category list ----
+# VC ยังอยู่ใน top-level เพื่อ shortcut — FREEFIRE ก็ยังมี shortcut
+# แต่ตัว method เองอยู่ใน L4 select ด้านในด้วย
 CATEGORY_LIST = [
     ("L7",          " L7 — ยิงเว็บ (HTTP)"),
-    ("L4",          " L4 — ยิงเกม (TCP/UDP)"),
+    ("L4",          " L4 — ยิงเกม (TCP/UDP) — รวม Free Fire"),
     ("VC",          " VC Discord — ยิงห้องเสียง"),
-    ("FF",          " Free Fire — ยิงเซิฟ"),
-    ("HTTPS",       " ddos-https — massive RPS"),
+    ("FF",          " Free Fire — shortcut ตรง"),
+    ("HTTPS",       "⚡ ddos-https — massive RPS"),
     ("HTTPSLOAD",   " ddos-httpsload — HTTP Flood"),
     ("BYBROWSER",   " ddos by-browser — HTTP/2 จำลอง Browser (เลี่ยง UAM/CAPTCHA)"),
     ("HTTPSBYPASS", " ddos-https-bypass — HTTP/2 เลี่ยง Cloudflare"),
     ("CDNBYPASS",   " ddos-cdn-bypass — HTTP/2 สำหรับ enterprise (ไม่ใช่ CF)"),
 ]
 
-# ---- target validation ----
 def forbidden_target(t: str):
     s = t.lower().strip()
     if s in ("localhost", "127.0.0.1", "::1"): return "Local IP"
@@ -51,7 +57,6 @@ def forbidden_target(t: str):
         if host.endswith(tld): return f"โดเมน {tld} ห้ามยิง"
     return None
 
-# ---- helpers ----
 def parse_duration(s: str):
     s = s.strip().lower()
     if s in ("th", "permanent", "ถาวร", "forever"): return 0
@@ -64,7 +69,6 @@ def fmt_expiry(exp):
     if exp == 0: return "ถาวร (TH)"
     return time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(exp))
 
-# ---- panel embed ----
 def panel_embed():
     e = discord.Embed(color=PANEL_COLOR)
     e.description = (
@@ -127,6 +131,7 @@ class MethodView(discord.ui.View):
     def __init__(self, layer, target, port, dur):
         super().__init__(timeout=120)
         opts = L7_LIST if layer == "L7" else L4_LIST
+        # L4 มี 22 methods — discord limit select = 25 → ปลอดภัย
         sel = discord.ui.Select(
             placeholder=f"เลือก {layer} method",
             options=[discord.SelectOption(label=m, value=m) for m in opts[:25]],
