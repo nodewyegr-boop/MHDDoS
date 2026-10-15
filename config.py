@@ -27,13 +27,7 @@ PANEL_COLOR = 0x2b2d31
 
 FORBIDDEN_TLDS = (".th", ".go.th", ".ac.th", ".mi.th", ".gov", ".go.jp")
 
-# Free Fire endpoints (Garena)
-FF_ENDPOINTS = [
-    "ff01.garena.com",
-    "ff02.garena.com",
-    "ff03.garena.com",
-]
+FF_ENDPOINTS = ["ff01.garena.com", "ff02.garena.com", "ff03.garena.com"]
 
-# Discord voice UDP range — ใช้ยิง VC
 DISCORD_VOICE_PORT_MIN = 50000
 DISCORD_VOICE_PORT_MAX = 50050
